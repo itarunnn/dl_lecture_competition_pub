@@ -23,7 +23,7 @@ def run(args: DictConfig):
     # ------------------
     #    Dataloader
     # ------------------    
-    test_set = ThingsMEGDataset("test", args.data_dir)
+    test_set = ThingsMEGDataset("test", args.data_dir, num_subjects=args.num_subjects)
     test_loader = torch.utils.data.DataLoader(
         test_set, shuffle=False, batch_size=args.batch_size, num_workers=args.num_workers
     )
@@ -32,7 +32,7 @@ def run(args: DictConfig):
     #       Model
     # ------------------
     model = BasicConvClassifier(
-        test_set.num_classes, test_set.seq_len, test_set.num_channels
+        test_set.num_classes, test_set.seq_len, test_set.num_channels, num_subjects=args.num_subjects, hid_dim=128, p_drop=0.1
     ).to(args.device)
     model.load_state_dict(torch.load(args.model_path, map_location=args.device))
 
@@ -41,8 +41,8 @@ def run(args: DictConfig):
     # ------------------ 
     preds = [] 
     model.eval()
-    for X, subject_idxs in tqdm(test_loader, desc="Validation"):        
-        preds.append(model(X.to(args.device)).detach().cpu())
+    for X, subject_idx in tqdm(test_loader, desc="Validation"):        
+        preds.append(model(X.to(args.device), subject_idx.to(args.device)).detach().cpu())
         
     preds = torch.cat(preds, dim=0).numpy()
     np.save(os.path.join(savedir, "submission"), preds)
